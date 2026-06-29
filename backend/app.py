@@ -5,7 +5,7 @@ from routes.kundali import kundali_bp
 from routes.appointment import appt_bp
 
 app = Flask(__name__)
-CORS(app, origins=["https://kundali-shastri.netlify.app", "http://localhost:3000"])
+CORS(app, origins=["*"])
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(kundali_bp, url_prefix="/api/kundali")
