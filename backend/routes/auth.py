@@ -1,16 +1,13 @@
 from flask import Blueprint, request, jsonify
-from pymongo import MongoClient
 from bson import ObjectId
 import jwt
 from datetime import datetime, timedelta
 from models.user import create_user, check_password, public_user
-from config import MONGO_URI, JWT_SECRET, JWT_EXPIRY_HOURS, GOOGLE_SCRIPT_URL
+from config import JWT_SECRET, JWT_EXPIRY_HOURS, GOOGLE_SCRIPT_URL
+from database import get_db
 import requests
 
 auth_bp = Blueprint("auth", __name__)
-client = MongoClient(MONGO_URI)
-db = client["kundali_db"]
-users_col = db["users"]
 
 def make_token(user_id):
     payload = {
@@ -34,8 +31,8 @@ def get_current_user():
     uid = verify_token(token)
     if not uid:
         return None
-    user = users_col.find_one({"_id": ObjectId(uid)})
-    return user
+    db = get_db()
+    return db["users"].find_one({"_id": ObjectId(uid)})
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
@@ -49,15 +46,16 @@ def register():
         return jsonify({"error": "બધાં ક્ષેત્રો ભરો"}), 400
     if len(password) < 6:
         return jsonify({"error": "પાસવર્ડ ઓછામાં ઓછો 6 અક્ષરનો હોવો જોઈએ"}), 400
-    if users_col.find_one({"email": email}):
+
+    db = get_db()
+    if db["users"].find_one({"email": email}):
         return jsonify({"error": "આ ઇ-મેઇલ પહેલાંથી નોંધાયેલ છે"}), 409
 
     user = create_user(name, email, phone, password)
-    result = users_col.insert_one(user)
+    result = db["users"].insert_one(user)
     user_id = str(result.inserted_id)
     token = make_token(user_id)
 
-    # Sync to Google Sheets
     try:
         requests.post(GOOGLE_SCRIPT_URL, json={
             "action": "add_user",
@@ -79,7 +77,8 @@ def login():
     email    = data.get("email", "").strip().lower()
     password = data.get("password", "")
 
-    user = users_col.find_one({"email": email})
+    db = get_db()
+    user = db["users"].find_one({"email": email})
     if not user or not check_password(password, user["password"]):
         return jsonify({"error": "ઇ-મેઇલ અથવા પાસવર્ડ ખોટો છે"}), 401
 
@@ -99,7 +98,8 @@ def update_profile():
     if not user:
         return jsonify({"error": "Unauthorized"}), 401
     data = request.json
-    users_col.update_one(
+    db = get_db()
+    db["users"].update_one(
         {"_id": user["_id"]},
         {"$set": {
             "name": data.get("name", user["name"]),
@@ -109,5 +109,5 @@ def update_profile():
             "profile.dob": data.get("dob", "")
         }}
     )
-    updated = users_col.find_one({"_id": user["_id"]})
+    updated = db["users"].find_one({"_id": user["_id"]})
     return jsonify({"user": public_user(updated)}), 200

@@ -1,10 +1,10 @@
 from pymongo import MongoClient
-from config import Config
+from config import MONGO_URI
 
-client = MongoClient(Config.MONGO_URI)
-db = client.get_database("kundali_db")
+_client = None
 
-# Collections
-users_col       = db["users"]
-kundali_col     = db["kundali_records"]
-appointments_col = db["appointments"]
+def get_db():
+    global _client
+    if _client is None:
+        _client = MongoClient(MONGO_URI)
+    return _client["kundali_db"]
