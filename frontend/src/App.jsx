@@ -13,45 +13,34 @@ function AppInner() {
   const [tab, setTab] = useState("kundali");
   const [apptKey, setApptKey] = useState(0);
   const [myKundaliKey, setMyKundaliKey] = useState(0);
+  const [prefillData, setPrefillData] = useState(null);
+  const [kundaliTabKey, setKundaliTabKey] = useState(0);
 
-  if (loading) return (
-    <div style={loadingStyle}>🕉️ લોડ થઈ રહ્યું છે...</div>
-  );
-
+  if (loading) return <div style={loadingStyle}>🕉️ લોડ થઈ રહ્યું છે...</div>;
   if (!user) return <AuthPage />;
+
+  const handleLoadKundali = (k) => {
+    setPrefillData({ name: k.name, dob: k.dob, tob: k.tob, pob: k.pob, lat: k.lat, lon: k.lon });
+    setKundaliTabKey((n) => n + 1);
+    setTab("kundali");
+  };
 
   return (
     <div style={{ minHeight: "100vh", background: "#1a0a00" }}>
       <Navbar activeTab={tab} setActiveTab={setTab} />
-
       {tab === "kundali" && (
-        <KundaliTab onSaved={() => setMyKundaliKey(k => k + 1)} />
+        <KundaliTab key={kundaliTabKey} onSaved={() => setMyKundaliKey((k) => k + 1)} prefillData={prefillData} onPrefillConsumed={() => setPrefillData(null)} />
       )}
-      {tab === "my-kundalis" && (
-        <MyKundalis key={myKundaliKey} onLoad={(k) => setTab("kundali")} />
-      )}
-      {tab === "book" && (
-        <BookAppointment onBooked={() => {
-          setApptKey(k => k + 1);
-          setTab("appointments");
-        }} />
-      )}
-      {tab === "appointments" && (
-        <MyAppointments key={apptKey} />
-      )}
+      {tab === "my-kundalis" && <MyKundalis key={myKundaliKey} onLoad={handleLoadKundali} />}
+      {tab === "book" && <BookAppointment onBooked={() => { setApptKey((k) => k + 1); setTab("appointments"); }} />}
+      {tab === "appointments" && <MyAppointments key={apptKey} />}
       {tab === "profile" && <Profile />}
     </div>
   );
 }
 
-const loadingStyle = {
-  minHeight: "100vh", display: "flex", alignItems: "center",
-  justifyContent: "center", background: "#1a0a00",
-  color: "#d4a017", fontSize: "1.2rem"
-};
+const loadingStyle = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#1a0a00", color: "#d4a017", fontSize: "1.2rem" };
 
 export default function App() {
-  return (
-    <AuthProvider><AppInner /></AuthProvider>
-  );
+  return <AuthProvider><AppInner /></AuthProvider>;
 }

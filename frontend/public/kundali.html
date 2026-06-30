@@ -2496,6 +2496,23 @@ window.onload = () => {
   document.getElementById('lat').value = '23.0225';
   document.getElementById('lon').value = '72.5714';
 };
+
+window.addEventListener('message', (event) => {
+  if (event.data?.type === 'LOAD_KUNDALI') {
+    const d = event.data.data;
+    try {
+      if (d.name) document.getElementById('name').value = d.name;
+      if (d.dob)  document.getElementById('dob').value = d.dob;
+      if (d.tob)  document.getElementById('tob').value = d.tob;
+      if (d.pob)  document.getElementById('pob').value = d.pob;
+      if (d.lat)  document.getElementById('lat').value = d.lat;
+      if (d.lon)  document.getElementById('lon').value = d.lon;
+      setTimeout(() => { generateKundali(); }, 150);
+    } catch (e) {
+      console.warn('Failed to prefill kundali', e);
+    }
+  }
+});
 </script>
 
 <!-- ══ CONTACT SECTION ══ -->
