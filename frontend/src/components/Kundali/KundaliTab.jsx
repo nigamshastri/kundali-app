@@ -7,6 +7,7 @@ export default function KundaliTab({ onSaved, prefillData, onPrefillConsumed }) 
   const [saving, setSaving] = useState(false);
   const [savedMsg, setSavedMsg] = useState("");
   const iframeRef = useRef(null);
+  const ackedRef = useRef(false);
 
   useEffect(() => {
     const handler = (event) => {
@@ -17,26 +18,42 @@ export default function KundaliTab({ onSaved, prefillData, onPrefillConsumed }) 
           document.getElementById("save-panel")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 400);
       }
+      if (event.data?.type === "KUNDALI_LOADED_ACK") {
+        ackedRef.current = true;
+      }
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
   }, []);
 
+  // Robustly push prefill data: retry every 300ms until iframe acks, max 4s
   useEffect(() => {
-    if (prefillData && iframeRef.current) {
-      const sendPrefill = () => {
-        iframeRef.current.contentWindow.postMessage(
+    if (!prefillData) return;
+    ackedRef.current = false;
+    let attempts = 0;
+    const maxAttempts = 14; // ~4.2s
+
+    const interval = setInterval(() => {
+      attempts++;
+      if (ackedRef.current || attempts > maxAttempts) {
+        clearInterval(interval);
+        if (!ackedRef.current) {
+          console.warn("Kundali prefill: no ack received after retries");
+        }
+        onPrefillConsumed?.();
+        return;
+      }
+      try {
+        iframeRef.current?.contentWindow?.postMessage(
           { type: "LOAD_KUNDALI", data: prefillData },
           "*"
         );
-        onPrefillConsumed?.();
-      };
-      if (iframeRef.current.contentDocument?.readyState === "complete") {
-        sendPrefill();
-      } else {
-        iframeRef.current.onload = sendPrefill;
+      } catch (e) {
+        // iframe not ready yet, will retry
       }
-    }
+    }, 300);
+
+    return () => clearInterval(interval);
   }, [prefillData]);
 
   const saveKundali = async () => {

@@ -2497,9 +2497,19 @@ window.onload = () => {
   document.getElementById('lon').value = '72.5714';
 };
 
+// Listen for prefill data from parent React app (when reopening a saved kundali)
+let _kundaliPrefillApplied = false;
 window.addEventListener('message', (event) => {
   if (event.data?.type === 'LOAD_KUNDALI') {
+    // Always ack so parent stops retrying, even if already applied once
+    try {
+      window.parent.postMessage({ type: 'KUNDALI_LOADED_ACK' }, '*');
+    } catch (e) {}
+
+    if (_kundaliPrefillApplied) return; // avoid re-triggering generate repeatedly
     const d = event.data.data;
+    if (!document.getElementById('name')) return; // DOM not ready yet, will retry on next message
+
     try {
       if (d.name) document.getElementById('name').value = d.name;
       if (d.dob)  document.getElementById('dob').value = d.dob;
@@ -2507,12 +2517,14 @@ window.addEventListener('message', (event) => {
       if (d.pob)  document.getElementById('pob').value = d.pob;
       if (d.lat)  document.getElementById('lat').value = d.lat;
       if (d.lon)  document.getElementById('lon').value = d.lon;
+      _kundaliPrefillApplied = true;
       setTimeout(() => { generateKundali(); }, 150);
     } catch (e) {
       console.warn('Failed to prefill kundali', e);
     }
   }
 });
+
 </script>
 
 <!-- ══ CONTACT SECTION ══ -->
