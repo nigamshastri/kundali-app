@@ -17,10 +17,13 @@ async function handleRes(res) {
   return data;
 }
 
-// Auth
 export const authAPI = {
   register: (body) =>
     fetch(`${BASE}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(handleRes),
+  verifyOtp: (email, otp) =>
+    fetch(`${BASE}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp }) }).then(handleRes),
+  resendOtp: (email) =>
+    fetch(`${BASE}/auth/resend-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email }) }).then(handleRes),
   login: (body) =>
     fetch(`${BASE}/auth/login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(handleRes),
   me: () =>
@@ -29,7 +32,6 @@ export const authAPI = {
     fetch(`${BASE}/auth/profile`, { method: "PUT", headers: authHeaders(), body: JSON.stringify(body) }).then(handleRes),
 };
 
-// Kundali
 export const kundaliAPI = {
   save: (body) =>
     fetch(`${BASE}/kundali/save`, { method: "POST", headers: authHeaders(), body: JSON.stringify(body) }).then(handleRes),
@@ -41,7 +43,6 @@ export const kundaliAPI = {
     fetch(`${BASE}/kundali/${id}`, { method: "DELETE", headers: authHeaders() }).then(handleRes),
 };
 
-// Appointments
 export const apptAPI = {
   book: (body) =>
     fetch(`${BASE}/appointments/book`, { method: "POST", headers: authHeaders(), body: JSON.stringify(body) }).then(handleRes),
