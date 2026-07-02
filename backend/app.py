@@ -3,34 +3,34 @@ from flask_cors import CORS
 from routes.auth import auth_bp
 from routes.kundali import kundali_bp
 from routes.appointment import appt_bp
+from mailer import init_mail
 import traceback
 
 app = Flask(__name__)
 
-CORS(app, 
+CORS(app,
      resources={r"/api/*": {"origins": "*"}},
      allow_headers=["Content-Type", "Authorization"],
      methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+
+init_mail(app)
 
 app.register_blueprint(auth_bp, url_prefix="/api/auth")
 app.register_blueprint(kundali_bp, url_prefix="/api/kundali")
 app.register_blueprint(appt_bp, url_prefix="/api/appointments")
 
-@app.after_request
-def after_request(response):
-    response.headers.add("Access-Control-Allow-Origin", "*")
-    response.headers.add("Access-Control-Allow-Headers", "Content-Type,Authorization")
-    response.headers.add("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS")
-    return response
-
 @app.route("/api/health")
 def health():
     return jsonify({"status": "ok"})
 
+@app.errorhandler(404)
+def not_found(e):
+    return jsonify({"error": "Route not found"}), 404
+
 @app.errorhandler(Exception)
 def handle_exception(e):
     traceback.print_exc()
-    return jsonify({"error": str(e)}), 500
+    return jsonify({"error": "Server error"}), 500
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
