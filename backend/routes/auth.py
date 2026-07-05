@@ -1,18 +1,11 @@
 from flask import Blueprint, request, jsonify
 from bson import ObjectId
-import jwt
-import re
-import random
-import string
+import jwt, re, random, string, os
 from datetime import datetime, timedelta
 from models.user import create_user, check_password, public_user
 from config import JWT_SECRET, JWT_EXPIRY_HOURS, GOOGLE_SCRIPT_URL
 from database import get_db
 import requests
-import smtplib
-import os
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 auth_bp = Blueprint("auth", __name__)
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -46,25 +39,39 @@ def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
 def send_otp_email(to_email, name, otp):
-    mail_user = os.getenv('MAIL_USERNAME', '')
-    mail_pass = os.getenv('MAIL_PASSWORD', '')
-    print(f"Sending OTP to {to_email}, mail_user set: {bool(mail_user)}, mail_pass set: {bool(mail_pass)}")
-    if not mail_user or not mail_pass:
-        raise Exception("MAIL_USERNAME or MAIL_PASSWORD not configured")
-    subject = "Shastri Jyotish - OTP Verification"
-    body = f"<h2>Your OTP: <b>{otp}</b></h2><p>Valid for 10 minutes.</p><p>- Shastri Jyotish</p>"
-    msg = MIMEMultipart('alternative')
-    msg['Subject'] = subject
-    msg['From'] = mail_user
-    msg['To'] = to_email
-    msg.attach(MIMEText(body, 'html'))
-    print(f"Connecting to Gmail SMTP...")
-    with smtplib.SMTP('smtp.gmail.com', 587, timeout=30) as server:
-        server.ehlo()
-        server.starttls()
-        server.login(mail_user, mail_pass)
-        server.sendmail(mail_user, to_email, msg.as_string())
-    print(f"OTP email sent successfully to {to_email}")
+    api_key = os.getenv('BREVO_API_KEY', '')
+    mail_user = os.getenv('MAIL_USERNAME', 'noreply@shastrjyotish.com')
+    if not api_key:
+        raise Exception("BREVO_API_KEY not configured")
+    payload = {
+        "sender": {"name": "Shastri Jyotish", "email": mail_user},
+        "to": [{"email": to_email, "name": name}],
+        "subject": "Shastri Jyotish - Email Verification OTP",
+        "htmlContent": f"""
+        <div style="font-family:Arial;background:#1a0a00;color:#fff8f0;padding:30px;max-width:480px;margin:0 auto;border-radius:16px;border:1px solid rgba(212,160,23,0.4)">
+          <div style="text-align:center;margin-bottom:20px">
+            <div style="font-size:40px">OTP</div>
+            <h2 style="color:#d4a017;margin:8px 0">Shastri Jyotish</h2>
+          </div>
+          <p>Hello <b>{name}</b>,</p>
+          <p>Your email verification OTP:</p>
+          <div style="background:rgba(255,107,26,0.15);border:2px solid #ff6b1a;border-radius:12px;padding:20px;text-align:center;margin:20px 0">
+            <div style="font-size:48px;font-weight:bold;color:#d4a017;letter-spacing:10px">{otp}</div>
+            <div style="color:rgba(255,248,240,0.5);font-size:13px;margin-top:8px">Valid for 10 minutes</div>
+          </div>
+          <p style="color:rgba(255,248,240,0.4);font-size:12px">Do not share this OTP with anyone.</p>
+        </div>
+        """
+    }
+    response = requests.post(
+        "https://api.brevo.com/v3/smtp/email",
+        headers={"api-key": api_key, "Content-Type": "application/json"},
+        json=payload,
+        timeout=15
+    )
+    print(f"Brevo response: {response.status_code} {response.text}")
+    if response.status_code not in (200, 201):
+        raise Exception(f"Brevo error: {response.text}")
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
@@ -98,7 +105,7 @@ def register():
     except Exception as e:
         print(f"Email error: {str(e)}")
         db["pending_users"].delete_many({"email": email})
-        return jsonify({"error": f"ઇ-મેઇલ મોકલવામાં ભૂલ: {str(e)}"}), 500
+        return jsonify({"error": f"ઇ-મેઇલ ભૂલ: {str(e)}"}), 500
     return jsonify({"message": "OTP ઇ-મેઇલ પર મોકલ્યો!", "email": email}), 200
 
 @auth_bp.route("/verify-otp", methods=["POST"])
@@ -155,7 +162,7 @@ def resend_otp():
     try:
         send_otp_email(email, pending["name"], otp)
     except Exception as e:
-        return jsonify({"error": f"ઇ-મેઇલ મોકલવામાં ભૂલ: {str(e)}"}), 500
+        return jsonify({"error": f"ઇ-મેઇલ ભૂલ: {str(e)}"}), 500
     return jsonify({"message": "નવો OTP મોકલ્યો!"}), 200
 
 @auth_bp.route("/login", methods=["POST"])
