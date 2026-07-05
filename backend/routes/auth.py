@@ -8,8 +8,11 @@ from datetime import datetime, timedelta
 from models.user import create_user, check_password, public_user
 from config import JWT_SECRET, JWT_EXPIRY_HOURS, GOOGLE_SCRIPT_URL
 from database import get_db
-from mailer import send_otp_email
 import requests
+import smtplib
+import os
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 auth_bp = Blueprint("auth", __name__)
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -42,6 +45,27 @@ def get_current_user():
 def generate_otp():
     return ''.join(random.choices(string.digits, k=6))
 
+def send_otp_email(to_email, name, otp):
+    mail_user = os.getenv('MAIL_USERNAME', '')
+    mail_pass = os.getenv('MAIL_PASSWORD', '')
+    print(f"Sending OTP to {to_email}, mail_user set: {bool(mail_user)}, mail_pass set: {bool(mail_pass)}")
+    if not mail_user or not mail_pass:
+        raise Exception("MAIL_USERNAME or MAIL_PASSWORD not configured")
+    subject = "Shastri Jyotish - OTP Verification"
+    body = f"<h2>Your OTP: <b>{otp}</b></h2><p>Valid for 10 minutes.</p><p>- Shastri Jyotish</p>"
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = subject
+    msg['From'] = mail_user
+    msg['To'] = to_email
+    msg.attach(MIMEText(body, 'html'))
+    print(f"Connecting to Gmail SMTP...")
+    with smtplib.SMTP('smtp.gmail.com', 587, timeout=30) as server:
+        server.ehlo()
+        server.starttls()
+        server.login(mail_user, mail_pass)
+        server.sendmail(mail_user, to_email, msg.as_string())
+    print(f"OTP email sent successfully to {to_email}")
+
 @auth_bp.route("/register", methods=["POST"])
 def register():
     data = request.json or {}
@@ -72,6 +96,7 @@ def register():
     try:
         send_otp_email(email, name, otp)
     except Exception as e:
+        print(f"Email error: {str(e)}")
         db["pending_users"].delete_many({"email": email})
         return jsonify({"error": f"ઇ-મેઇલ મોકલવામાં ભૂલ: {str(e)}"}), 500
     return jsonify({"message": "OTP ઇ-મેઇલ પર મોકલ્યો!", "email": email}), 200
