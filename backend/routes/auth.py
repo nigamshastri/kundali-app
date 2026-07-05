@@ -144,7 +144,7 @@ def login():
     user = db["users"].find_one({"email": email})
     if not user or not check_password(password, user["password"]):
         return jsonify({"error": "ઇ-મેઇલ અથવા પાસવર્ડ ખોટો છે"}), 401
-    if not user.get("email_verified", False):
+    if user.get("email_verified") == False:
         return jsonify({"error": "ઇ-મેઇલ ચકાસણી બાકી છે.", "needs_verification": True, "email": email}), 403
     token = make_token(str(user["_id"]))
     return jsonify({"token": token, "user": public_user(user)}), 200
