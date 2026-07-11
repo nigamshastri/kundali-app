@@ -52,6 +52,22 @@ export default function AuthPage({ initialMode = "login", onBack }) {
     }
   };
 
+
+  const submitOtp = async () => {
+    setError(""); setSuccess("");
+    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) return setError("6-અંકનો OTP ભરો");
+    setLoading(true);
+    try {
+      const data = await authAPI.verifyOtp(pendingEmail, otp);
+      localStorage.setItem("kundali_token", data.token);
+      window.location.reload();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const submitLogin = async () => {
     setError(""); setSuccess("");
     if (!form.email || !form.password) return setError("ઇ-મેઇલ અને પાસવર્ડ ભરો");
