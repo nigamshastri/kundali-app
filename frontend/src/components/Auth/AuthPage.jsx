@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { authAPI } from "../../services/api";
 
-export default function AuthPage() {
-  const [mode, setMode] = useState("login");
+export default function AuthPage({ initialMode = "login", onBack }) {
+  const [mode, setMode] = useState(initialMode);
   const [form, setForm] = useState({ name: "", email: "", phone: "", password: "", confirm: "" });
   const [otp, setOtp] = useState("");
   const [pendingEmail, setPendingEmail] = useState("");
