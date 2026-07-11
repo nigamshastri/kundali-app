@@ -57,15 +57,12 @@ export default function AuthPage({ initialMode = "login", onBack }) {
     if (!form.email || !form.password) return setError("ઇ-મેઇલ અને પાસવર્ડ ભરો");
     setLoading(true);
     try {
-      await login(form.email, form.password);
+      const res = await authAPI.loginRequestOtp(form.email, form.password);
+      setPendingEmail(form.email);
+      setMode("verify-otp");
+      setSuccess(res.message || "OTP ઇ-મેઇલ પર મોકલ્યો!");
     } catch (e) {
-      if (e.message && e.message.includes("ચકાસણી")) {
-        setPendingEmail(form.email);
-        setMode("verify-otp");
-        setSuccess("OTP ઇ-મેઇલ પર ફરી મોકલ્યો.");
-      } else {
-        setError(e.message);
-      }
+      setError(e.message);
     } finally {
       setLoading(false);
     }
