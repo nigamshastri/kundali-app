@@ -112,13 +112,36 @@ def register():
 def verify_otp():
     data = request.json or {}
     email = data.get("email", "").strip().lower()
-    otp = data.get("otp", "").strip()
+    otp   = data.get("otp", "").strip()
     if not email or not otp:
         return jsonify({"error": "ઇ-મેઇલ અને OTP જરૂરી છે"}), 400
+
     db = get_db()
+
+    # Check if it is a LOGIN OTP first
+    login_pending = db["pending_logins"].find_one({"email": email})
+    if login_pending:
+        try:
+            expiry = datetime.fromisoformat(login_pending["otp_expiry"])
+        except:
+            return jsonify({"error": "OTP ખોટો છે."}), 400
+        if datetime.utcnow() > expiry:
+            db["pending_logins"].delete_many({"email": email})
+            return jsonify({"error": "OTP ની સમય-મર્યાદા પૂરી થઈ. ફરીથી લૉગ ઇન કરો."}), 400
+        if login_pending["otp"] != otp:
+            return jsonify({"error": "OTP ખોટો છે. ફરીથી ચકાસો."}), 400
+        # OTP correct - complete login
+        user = db["users"].find_one({"_id": ObjectId(login_pending["user_id"])})
+        db["pending_logins"].delete_many({"email": email})
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+        token = make_token(str(user["_id"]))
+        return jsonify({"message": "✅ લૉગ ઇન સફળ!", "token": token, "user": public_user(user)}), 200
+
+    # Otherwise check REGISTRATION OTP
     pending = db["pending_users"].find_one({"email": email})
     if not pending:
-        return jsonify({"error": "કોઈ pending નોંધણી મળી નથી. ફરીથી નોંધણી કરો."}), 404
+        return jsonify({"error": "OTP expired or not found. Please try again."}), 404
     try:
         expiry = datetime.fromisoformat(pending["otp_expiry"])
     except:
@@ -164,6 +187,41 @@ def resend_otp():
     except Exception as e:
         return jsonify({"error": f"ઇ-મેઇલ ભૂલ: {str(e)}"}), 500
     return jsonify({"message": "નવો OTP મોકલ્યો!"}), 200
+
+
+@auth_bp.route("/login-otp", methods=["POST"])
+def login_otp():
+    """Step 1 of login: verify credentials, then send OTP"""
+    data = request.json or {}
+    email    = data.get("email", "").strip().lower()
+    password = data.get("password", "")
+
+    if not email or not password:
+        return jsonify({"error": "ઇ-મેઇલ અને પાસવર્ડ ભરો"}), 400
+
+    db = get_db()
+    user = db["users"].find_one({"email": email})
+    if not user or not check_password(password, user["password"]):
+        return jsonify({"error": "ઇ-મેઇલ અથવા પાસવર્ડ ખોટો છે"}), 401
+
+    # Credentials valid — generate OTP and store in pending_logins
+    otp = generate_otp()
+    otp_expiry = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    db["pending_logins"].delete_many({"email": email})
+    db["pending_logins"].insert_one({
+        "email": email,
+        "otp": otp,
+        "otp_expiry": otp_expiry,
+        "user_id": str(user["_id"])
+    })
+
+    try:
+        send_otp_email(email, user["name"], otp)
+    except Exception as e:
+        db["pending_logins"].delete_many({"email": email})
+        return jsonify({"error": f"ઇ-મેઇલ ભૂલ: {str(e)}"}), 500
+
+    return jsonify({"message": "OTP ઇ-મેઇલ પર મોકલ્યો!", "email": email}), 200
 
 @auth_bp.route("/login", methods=["POST"])
 def login():

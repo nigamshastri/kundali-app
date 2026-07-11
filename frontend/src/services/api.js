@@ -20,6 +20,8 @@ async function handleRes(res) {
 export const authAPI = {
   register: (body) =>
     fetch(`${BASE}/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then(handleRes),
+  loginRequestOtp: (email, password) =>
+    fetch(`${BASE}/auth/login-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, password }) }).then(handleRes),
   verifyOtp: (email, otp) =>
     fetch(`${BASE}/auth/verify-otp`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email, otp }) }).then(handleRes),
   resendOtp: (email) =>
