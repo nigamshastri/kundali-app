@@ -6,7 +6,7 @@ export default function Navbar({ activeTab, setActiveTab }) {
   const [menuOpen, setMenuOpen] = useState(false);
 
   const tabs = [
-    { id: "my-kundalis", label: "🔯 મારી કુંડળીઓ" },
+    { id: "home", label: "🏠 હોમ" },
     { id: "book", label: "📅 બુકિંગ" },
     { id: "appointments", label: "🗓️ એપોઇન્ટ." },
     { id: "profile", label: "👤 પ્રોફાઇલ" },
