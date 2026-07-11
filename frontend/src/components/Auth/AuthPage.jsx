@@ -40,14 +40,15 @@ export default function AuthPage({ initialMode = "login", onBack }) {
     }
   };
 
-  const submitOtp = async () => {
+  const submitLogin = async () => {
     setError(""); setSuccess("");
-    if (otp.length !== 6 || !/^\d{6}$/.test(otp)) return setError("6-અંકનો OTP ભરો");
+    if (!form.email || !form.password) return setError("ઇ-મેઇલ અને પાસવર્ડ ભરો");
     setLoading(true);
     try {
-      const data = await authAPI.verifyOtp(pendingEmail, otp);
-      localStorage.setItem("kundali_token", data.token);
-      window.location.reload();
+      const res = await authAPI.loginRequestOtp(form.email, form.password);
+      setPendingEmail(form.email);
+      setMode("verify-otp");
+      setSuccess(res.message || "OTP ઇ-મેઇલ પર મોકલ્યો!");
     } catch (e) {
       setError(e.message);
     } finally {
