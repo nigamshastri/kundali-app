@@ -40,22 +40,6 @@ export default function AuthPage({ initialMode = "login", onBack }) {
     }
   };
 
-  const submitLogin = async () => {
-    setError(""); setSuccess("");
-    if (!form.email || !form.password) return setError("ઇ-મેઇલ અને પાસવર્ડ ભરો");
-    setLoading(true);
-    try {
-      const res = await authAPI.loginRequestOtp(form.email, form.password);
-      setPendingEmail(form.email);
-      setMode("verify-otp");
-      setSuccess(res.message || "OTP ઇ-મેઇલ પર મોકલ્યો!");
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const resendOtp = async () => {
     setError(""); setResending(true);
     try {
