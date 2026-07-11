@@ -91,7 +91,7 @@ export default function AuthPage({ initialMode = "login", onBack }) {
       <div style={S.card}>
         <div style={S.header}>
           <div style={S.logo}>🕉️</div>
-          <h2 style={S.title}>શાસ્ત્રી જ્યોતિષ</h2>
+          <h2 style={S.title}>Nigmayu Jyotish</h2>
           <p style={S.subtitle}>Kundali & Appointment System</p>
         </div>
 

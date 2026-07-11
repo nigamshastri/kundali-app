@@ -2,8 +2,8 @@ import { useState } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import AuthPage from "./components/Auth/AuthPage";
 import Navbar from "./components/Layout/Navbar";
-import KundaliTab from "./components/Kundali/KundaliTab";
 import MyKundalis from "./components/Kundali/MyKundalis";
+import KundaliTab from "./components/Kundali/KundaliTab";
 import BookAppointment from "./components/Appointment/BookAppointment";
 import MyAppointments from "./components/Appointment/MyAppointments";
 import Profile from "./components/Auth/Profile";
@@ -11,7 +11,7 @@ import LandingPage from "./components/Landing/LandingPage";
 
 function AppInner() {
   const { user, loading } = useAuth();
-  const [tab, setTab] = useState("kundali");
+  const [tab, setTab] = useState("my-kundalis");
   const [apptKey, setApptKey] = useState(0);
   const [myKundaliKey, setMyKundaliKey] = useState(0);
   const [prefillData, setPrefillData] = useState(null);
@@ -35,8 +35,8 @@ function AppInner() {
     return (
       <div style={{ minHeight:"100vh", background:"#04020e" }}>
         <Navbar activeTab={tab} setActiveTab={setTab} />
-        {tab === "kundali"       && <KundaliTab key={kundaliTabKey} onSaved={() => setMyKundaliKey(k=>k+1)} prefillData={prefillData} onPrefillConsumed={() => setPrefillData(null)} />}
-        {tab === "my-kundalis"   && <MyKundalis key={myKundaliKey} onLoad={handleLoadKundali} />}
+        {tab === "my-kundalis"   && <MyKundalis key={myKundaliKey} onLoad={handleLoadKundali} onMakeNew={() => setTab("make-kundali")} />}
+        {tab === "make-kundali"  && <KundaliTab key={kundaliTabKey} onSaved={() => { setMyKundaliKey(k=>k+1); setTab("my-kundalis"); }} prefillData={prefillData} onPrefillConsumed={() => setPrefillData(null)} />}
         {tab === "book"          && <BookAppointment onBooked={() => { setApptKey(k=>k+1); setTab("appointments"); }} />}
         {tab === "appointments"  && <MyAppointments key={apptKey} />}
         {tab === "profile"       && <Profile />}

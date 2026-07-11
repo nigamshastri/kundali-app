@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { kundaliAPI } from "../../services/api";
 
-export default function MyKundalis({ onLoad }) {
+export default function MyKundalis({ onLoad, onMakeNew }) {
   const [kundalis, setKundalis] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -22,7 +22,12 @@ export default function MyKundalis({ onLoad }) {
 
   return (
     <div style={styles.wrap}>
-      <h2 style={styles.heading}>📚 મારી સાચવેલ કુંડળીઓ</h2>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:"1.5rem",flexWrap:"wrap",gap:"0.75rem"}}>
+        <h2 style={{...styles.heading,marginBottom:0}}>🔯 મારી કુંડળીઓ</h2>
+        <button onClick={onMakeNew} style={{padding:"0.55rem 1.2rem",background:"linear-gradient(135deg,#8b1a1a,#ff6b1a)",border:"none",borderRadius:"50px",color:"white",fontFamily:"'Noto Sans Gujarati',sans-serif",fontSize:"0.85rem",cursor:"pointer"}}>
+          ✨ નવી કુંડળી બનાવો
+        </button>
+      </div>
       {kundalis.length === 0 ? (
         <div style={styles.empty}>
           <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>🔯</div>
