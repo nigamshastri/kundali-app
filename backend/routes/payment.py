@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from routes.auth import get_current_user
 from database import get_db
+from notify import notify_admin
 import razorpay
 import os
 import uuid
@@ -29,8 +30,7 @@ def create_order():
     if conflict:
         return jsonify({"error": "આ સ્લૉટ ભરાઈ ગઈ છે."}), 409
     client = get_client()
-    receipt_id = "appt_" + str(uuid.uuid4())[:8]
-    order = client.order.create({"amount": APPOINTMENT_FEE, "currency": "INR", "receipt": receipt_id, "notes": {"user_id": str(user["_id"]), "service": appt_data.get("service", ""), "date": appt_data.get("date", ""), "time": appt_data.get("time", "")}})
+    order = client.order.create({"amount": APPOINTMENT_FEE, "currency": "INR", "receipt": "appt_" + str(uuid.uuid4())[:8]})
     db["pending_payments"].insert_one({"order_id": order["id"], "user_id": str(user["_id"]), "appointment_data": appt_data, "amount": APPOINTMENT_FEE, "status": "pending", "created_at": datetime.utcnow().isoformat()})
     return jsonify({"order_id": order["id"], "amount": APPOINTMENT_FEE, "currency": "INR", "key_id": RAZORPAY_KEY_ID}), 200
 
@@ -55,14 +55,36 @@ def verify_payment():
     if not pending:
         return jsonify({"error": "Order not found"}), 404
     appt_data = pending["appointment_data"]
-    appt = {"appointment_id": "A" + str(uuid.uuid4())[:6].upper(), "user_id": str(user["_id"]), "name": appt_data.get("name", ""), "phone": appt_data.get("phone", ""), "gender": appt_data.get("gender", ""), "age": appt_data.get("age", ""), "date": appt_data.get("date", ""), "time": appt_data.get("time", ""), "service": appt_data.get("service", ""), "mode": appt_data.get("mode", ""), "note": appt_data.get("note", ""), "status": "confirmed", "payment_id": payment_id, "order_id": order_id, "amount_paid": APPOINTMENT_FEE, "booked_at": datetime.utcnow().isoformat(), "updated_at": datetime.utcnow().isoformat()}
+    appt = {
+        "appointment_id": "A" + str(uuid.uuid4())[:6].upper(),
+        "user_id": str(user["_id"]),
+        "name": appt_data.get("name", ""),
+        "phone": appt_data.get("phone", ""),
+        "gender": appt_data.get("gender", ""),
+        "age": appt_data.get("age", ""),
+        "date": appt_data.get("date", ""),
+        "time": appt_data.get("time", ""),
+        "service": appt_data.get("service", ""),
+        "mode": appt_data.get("mode", ""),
+        "note": appt_data.get("note", ""),
+        "status": "confirmed",
+        "payment_id": payment_id,
+        "order_id": order_id,
+        "amount_paid": APPOINTMENT_FEE,
+        "booked_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat()
+    }
     db["appointments"].insert_one(appt)
     db["pending_payments"].update_one({"order_id": order_id}, {"$set": {"status": "paid", "payment_id": payment_id}})
     try:
-        import requests as req
+        import requests as req_lib
         from config import GOOGLE_SCRIPT_URL
-        req.post(GOOGLE_SCRIPT_URL, json={"action": "add_appointment", "id": appt["appointment_id"], "name": appt["name"], "phone": appt["phone"], "date": appt["date"], "time": appt["time"], "service": appt["service"], "mode": appt["mode"], "status": appt["status"], "note": appt["note"], "bookedAt": appt["booked_at"], "userId": appt["user_id"]}, timeout=5)
+        req_lib.post(GOOGLE_SCRIPT_URL, json={"action": "add_appointment", "id": appt["appointment_id"], "name": appt["name"], "phone": appt["phone"], "date": appt["date"], "time": appt["time"], "service": appt["service"], "mode": appt["mode"], "status": appt["status"], "note": appt["note"], "bookedAt": appt["booked_at"], "userId": appt["user_id"]}, timeout=5)
     except:
         pass
+    try:
+        notify_admin(appt)
+    except Exception as e:
+        print(f"Notification error: {e}")
     appt["_id"] = str(appt.get("_id", ""))
     return jsonify({"message": "✅ ચૂકવણી સફળ! એપોઇન્ટમેન્ટ પક્કી!", "appointment": appt}), 201
